@@ -14,7 +14,7 @@ import config_helper
 
 CONFIG_KEYS = ["model_name", "hidden_dim", "num_layers", "max_len",
                "config_file", "batch_size", "learning_rate", "max_epochs",
-               "log_path", "print_every"]
+               "log_name", "print_every"]
 
 parser =argparse.ArgumentParser()
 parser.add_argument("--config_file", type=str, required=True)
@@ -22,6 +22,12 @@ args = vars(parser.parse_args())
 
 FLAGS = config_helper.load(args["config_file"], CONFIG_KEYS)
 print(FLAGS)
+
+log_path = "./logs/%s" % FLAGS["log_name"]
+
+if not os.path.isdir(log_path):
+    os.makedirs(log_path)
+    print("created log path %s" % log_path)
 
 # prepare the data
 train_dataset = EmojiDataset("train", max_len=FLAGS["max_len"])
@@ -77,7 +83,8 @@ for epoch in range(FLAGS["max_epochs"]):
             total_loss = []
             total_preds = []
             total_truth = []
-
+            break
+    break
     # evaluate at end of every epoch
     valid_loss = []
     valid_preds = []
@@ -100,3 +107,5 @@ for epoch in range(FLAGS["max_epochs"]):
     print(classification_report(valid_truth, valid_preds,
                                 target_names=valid_dataset.cluster_emoji))
 
+    torch.save(model.state_dict(), log_path + ("/epoch_%s_model.pkt" % epoch))
+    print("saved model")
