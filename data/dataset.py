@@ -3,33 +3,32 @@ import pickle
 from torch.utils.data import Dataset
 from torch import LongTensor
 import numpy as np
+import logging
 
 class EmojiDataset(Dataset):
     def __init__(self, split, max_len=None):
         self.split = split
         self.vocab = pickle.load(open("./data/new_twitter.vocab","rb"))
-        print("Vocab loaded: %s words" % len(self.vocab["word2index"]))
+        logging.info("----------%s--------------", split)
+        logging.info("Vocab loaded: %s words" % len(self.vocab["word2index"]))
         if split == "train":
             self.pretrained_embeddings = np.load("./data/twitter.glove.npy")
-            print("loaded pretrained embedding %s" % str(self.pretrained_embeddings.shape))
+            logging.info("loaded pretrained embedding %s" % str(self.pretrained_embeddings.shape))
 
         self.cluster_emoji = [line.rstrip().replace("\t","") for line in open("./data/cluster_emoji.txt", "r")]
-        for i, cluster in enumerate(self.cluster_emoji):
-            print("%s: %s" % (i, cluster))
 
         samples = [line.rstrip().split("\t") for line in open("./data/idx_emoji_%s.tsv" % split, "r")]
         labels = [line.rstrip() for line in open("./data/label_%s.tsv" % split, "r")]
 
         self.label_dist = Counter(labels)
         self.data = list(zip(samples, map(lambda x: int(x), labels)))
-        print("Data loaded: %s" % len(self.data))
-        print("\nData Distribution")
+        logging.info("Data loaded: %s" % len(self.data))
         for key in self.label_dist.keys():
-            print("%s: %s (%.2f)" % (self.cluster_emoji[int(key)], self.label_dist[key],
+            logging.info("%s: %s (%.2f)" % (self.cluster_emoji[int(key)], self.label_dist[key],
                                     self.label_dist[key]/len(labels)))
         self.max_len = max_len if max_len else max([len(s) for s in samples])
-        print("max_len %s" % self.max_len)
-        print("samples exceeding max_len %.4f" % ([len(s) > self.max_len for s in samples].count(True)
+        logging.debug("max_len %s" % self.max_len)
+        logging.debug("samples exceeding max_len %.4f" % ([len(s) > self.max_len for s in samples].count(True)
                                                   / len(samples)))
 
     def __len__(self):

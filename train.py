@@ -1,4 +1,5 @@
 import os
+import logging
 import argparse
 import torch
 from torch.utils.data import DataLoader
@@ -12,6 +13,9 @@ from model.lstm_clf import LSTMClassifier
 from data.dataset import EmojiDataset
 import config_helper
 
+logging.basicConfig(format='%(levelname)s:%(asctime)s:%(message)s', level=logging.INFO)
+
+
 CONFIG_KEYS = ["model_name", "hidden_dim", "num_layers", "max_len",
                "config_file", "batch_size", "learning_rate", "max_epochs",
                "log_name", "print_every"]
@@ -21,13 +25,13 @@ parser.add_argument("--config_file", type=str, required=True)
 args = vars(parser.parse_args())
 
 FLAGS = config_helper.load(args["config_file"], CONFIG_KEYS)
-print(FLAGS)
+logging.debug(FLAGS)
 
 log_path = "./logs/%s" % FLAGS["log_name"]
 
 if not os.path.isdir(log_path):
     os.makedirs(log_path)
-    print("created log path %s" % log_path)
+    logging.info("created log path %s" % log_path)
 
 # prepare the data
 train_dataset = EmojiDataset("train", max_len=FLAGS["max_len"])
@@ -47,7 +51,7 @@ if FLAGS["model_name"] == "bi-lstm":
                            pretrained_embedding=train_dataset.pretrained_embeddings,
                            embedding_dim=train_dataset.pretrained_embeddings.shape[1])
     model.cuda()
-    print(model)
+    logging.debug(model)
 
 optimizer = optim.SGD(model.parameters(), lr=FLAGS["learning_rate"])
 loss_function = nn.CrossEntropyLoss()
@@ -76,7 +80,7 @@ for epoch in range(FLAGS["max_epochs"]):
         total_loss.append(loss.data[0])
 
         if step and step % FLAGS["print_every"] == 0:
-            print("epoch %s-step %s/%s=\
+            logging.info("epoch %s-step %s/%s=\
                     loss: %.4f, f1:%.4f" % (epoch, step, len(train_loader),
                                             np.mean(total_loss),
                                             f1_score(total_truth, total_preds, average="weighted")))
@@ -100,12 +104,12 @@ for epoch in range(FLAGS["max_epochs"]):
         valid_preds += predicted.tolist()
         valid_truth += y.tolist()
         valid_loss.append(loss.data[0])
-    print("\n**validation epoch %s\
+    logging.info("\n**validation epoch %s\
             loss: %.4f, f1:%.4f" % (epoch,
                                     np.mean(valid_loss),
                                     f1_score(valid_truth, valid_preds, average="weighted")))
-    print(classification_report(valid_truth, valid_preds,
+    logging.info(classification_report(valid_truth, valid_preds,
                                 target_names=valid_dataset.cluster_emoji))
 
     torch.save(model.state_dict(), log_path + ("/epoch_%s_model.pkt" % epoch))
-    print("saved model")
+    logging.info("saved model")

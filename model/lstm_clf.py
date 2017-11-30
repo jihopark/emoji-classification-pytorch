@@ -14,7 +14,6 @@ class LSTMClassifier(nn.Module):
 
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
         if pretrained_embedding is None:
-            print("using pretrained embedding")
             assert pretrained_embedding.shape[0] == vocab_size
             assert pretrained_embedding.shape[1] == embedding_dim
             self.embeddings.weight.data.copy_(torch.from_numpy(pretrained_embedding))
