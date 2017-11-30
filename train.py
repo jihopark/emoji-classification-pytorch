@@ -12,6 +12,7 @@ from sklearn.metrics import classification_report, f1_score
 from model.lstm_clf import LSTMClassifier
 from data.dataset import EmojiDataset
 import config_helper
+import scalar_saver
 
 logging.basicConfig(format='%(levelname)s:%(asctime)s:%(message)s', level=logging.INFO)
 
@@ -32,6 +33,7 @@ log_path = "./logs/%s" % FLAGS["log_name"]
 if not os.path.isdir(log_path):
     os.makedirs(log_path)
     logging.info("created log path %s" % log_path)
+scalar_saver.setup_log_files(log_path)
 
 # prepare the data
 train_dataset = EmojiDataset("train", max_len=FLAGS["max_len"])
@@ -56,12 +58,13 @@ if FLAGS["model_name"] == "bi-lstm":
 optimizer = optim.SGD(model.parameters(), lr=FLAGS["learning_rate"])
 loss_function = nn.CrossEntropyLoss()
 
+step = 0
 for epoch in range(FLAGS["max_epochs"]):
     total_loss = []
     total_preds = []
     total_truth = []
 
-    for step, (x, y) in enumerate(train_loader):
+    for x, y in train_loader:
         y = torch.squeeze(y)
         x, y = Variable(x.cuda()), y.cuda()
 
@@ -80,15 +83,17 @@ for epoch in range(FLAGS["max_epochs"]):
         total_loss.append(loss.data[0])
 
         if step and step % FLAGS["print_every"] == 0:
+            loss = np.mean(total_loss)
+            f1 = f1_score(total_truth, total_preds, average="weighted")
             logging.info("epoch %s-step %s/%s=\
                     loss: %.4f, f1:%.4f" % (epoch, step, len(train_loader),
-                                            np.mean(total_loss),
-                                            f1_score(total_truth, total_preds, average="weighted")))
+                                            loss, f1))
             total_loss = []
             total_preds = []
             total_truth = []
-            break
-    break
+            scalar_saver.record(log_path, "train", "loss", step, loss)
+            scalar_saver.record(log_path, "train", "f1", step, f1)
+        step += 1
     # evaluate at end of every epoch
     valid_loss = []
     valid_preds = []
@@ -104,10 +109,15 @@ for epoch in range(FLAGS["max_epochs"]):
         valid_preds += predicted.tolist()
         valid_truth += y.tolist()
         valid_loss.append(loss.data[0])
+
+    loss = np.mean(valid_loss)
+    f1 = f1_score(valid_truth, valid_preds, average="weighted")
+    scalar_saver.record(log_path, "valid", "loss", step, loss)
+    scalar_saver.record(log_path, "valid", "f1", step, f1)
+
     logging.info("\n**validation epoch %s\
             loss: %.4f, f1:%.4f" % (epoch,
-                                    np.mean(valid_loss),
-                                    f1_score(valid_truth, valid_preds, average="weighted")))
+                                    loss, f1))
     logging.info(classification_report(valid_truth, valid_preds,
                                 target_names=valid_dataset.cluster_emoji))
 

@@ -5,3 +5,5 @@
 *.npy
 *.txt
 config/*
+logs/*
+*.out
