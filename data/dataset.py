@@ -26,3 +26,9 @@ class EmojiDataset(Dataset):
         for key in self.label_dist.keys():
             print("%s: %s (%.2f)" % (self.cluster_emoji[int(key)], self.label_dist[key],
                                     self.label_dist[key]/len(labels)))
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
