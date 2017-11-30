@@ -4,3 +4,4 @@
 *.vocab
 *.npy
 *.txt
+config/*
